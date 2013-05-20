@@ -1,5 +1,6 @@
 // based on view-source:http://mikolalysenko.github.io/Isosurface/
 
+//webgl
 var gl;
 var triangleVertexPositionBuffer;
 var squareVertexPositionBuffer;
@@ -7,9 +8,25 @@ var shaderProgram;
 var mvMatrix = mat4.create();
 var pMatrix = mat4.create();
 
-var web3d = (function() {
-	
-});
+//fps
+var max_fps = 60;
+var fps = 0;
+var now;
+var then = Date.now();
+var interval = 1000/max_fps;
+var delta;
+var lastTime = 0;
+var frameCount = 0;
+var elapsedTime = 0;
+var counter = 0;
+var first = then;
+
+
+var rCube = 0;
+
+//volume rendering
+var volume = null;
+var mc = null;
 
 function initGL(canvas) {
     try {
@@ -182,9 +199,9 @@ function initCube() {
 
 function initVolume() {
 	
-	var volume = new Volume(new Sphere());
+	volume = new Volume(new Sphere());
 	volume.create();
-	var mc = MarchingCubes(volume.data, volume.resolution);
+	mc = MarchingCubes(volume.data, volume.resolution);
 	console.log(volume);
 	console.log(mc);
 	
@@ -219,14 +236,8 @@ function initVolume() {
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(volumeVertexIndices), gl.STATIC_DRAW);
 	volumeVertexIndexBuffer.itemSize = 1;
 	volumeVertexIndexBuffer.numItems = mc.faces.length*3;
-	
-	console.log("# vertex="+mc.vertices.length);
-	console.log("# faces="+mc.faces.length);
-	console.log("# indices="+mc.faces.length*3);
 }
 
-var lastTime = 0;
-var rCube = 0;
 function drawScene() {
     gl.viewport( 0, 0, gl.viewportWidth, gl.viewportHeight );
     gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
@@ -278,26 +289,51 @@ function animate() {
 	var timeNow = new Date().getTime();
 	if(lastTime != 0) {
 		var elapsed = timeNow - lastTime;
-		
+
 		rCube -= (75*elapsed)/1000.0;
 	}
-	lastTime = timeNow;
+	lastTime = timeNow;	
 }
 
-function tick() {
-	draw();
-	drawScene();
-	animate();
-}
-
-var fps = 60;
 function draw() {
-	setTimeout(function() {
-		requestAnimationFrame(tick);
-	}, 1000/fps);
+	
+	requestAnimationFrame(draw);
+	
+	now = Date.now();
+    delta = now - then;
+     
+    if (delta > interval) {
+        // update time stuffs
+         
+        // Just `then = now` is not enough.
+        // Lets say we set fps at 10 which means
+        // each frame must take 100ms
+        // Now frame executes in 16ms (60fps) so
+        // the loop iterates 7 times (16*7 = 112ms) until
+        // delta > interval === true
+        // Eventually this lowers down the FPS as
+        // 112*10 = 1120ms (NOT 1000ms).
+        // So we have to get rid of that extra 12ms
+        // by subtracting delta (112) % interval (100).
+        // Hope that makes sense.
+         
+        then = now - (delta % interval);
+         
+        // ... Code for Drawing the Frame ...
+		
+		drawScene();
+		animate();
+		
+		elapsedTime = (then - first)/1000;
+		
+		var div_fps = document.getElementById('fps');
+		fps = ++counter/elapsedTime;
+		div_fps.innerHTML = parseInt(fps) + 'fps: '+ counter + 'f / ' + parseInt(elapsedTime) + 's';
+    }
 }
 
 function webGLStart() {
+
     var canvas = document.getElementById("canvas");
     initGL( canvas );
     initShaders();
@@ -305,6 +341,41 @@ function webGLStart() {
 
     gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
     gl.enable( gl.DEPTH_TEST );
+	
+	var div_max_fps = document.getElementById('max_fps');
+	div_max_fps.innerHTML = max_fps + 'fps';
+	
+	var div_fps = document.getElementById('fps');
+	div_fps.innerHTML = fps;
+	
+	var div_volume = document.getElementById('volume');
+	div_volume.innerHTML = volume.name;
+	
+	var div_resolution = document.getElementById('resolution');
+	div_resolution.innerHTML = volume.resolution[0]+"x"+volume.resolution[1]+"x"+volume.resolution[2];
 
-    tick();
+	var div_range_x = document.getElementById('range_x');
+	var div_range_y = document.getElementById('range_y');
+	var div_range_z = document.getElementById('range_z');
+	div_range_x.innerHTML = "["+volume.polygon.dims[0][0]+","+volume.polygon.dims[0][1]+"]";
+	div_range_y.innerHTML = "["+volume.polygon.dims[1][0]+","+volume.polygon.dims[1][1]+"]";
+	div_range_z.innerHTML = "["+volume.polygon.dims[2][0]+","+volume.polygon.dims[2][1]+"]";
+
+	var div_step_x = document.getElementById('step_x');
+	var div_step_y = document.getElementById('step_y');
+	var div_step_z = document.getElementById('step_z');
+	div_step_x.innerHTML = volume.polygon.dims[0][2];
+	div_step_y.innerHTML = volume.polygon.dims[1][2];
+	div_step_z.innerHTML = volume.polygon.dims[2][2];
+	
+	var div_num_vertices = document.getElementById('num_vertices');
+	num_vertices.innerHTML = mc.vertices.length;
+
+	var div_num_faces = document.getElementById('num_faces');
+	num_faces.innerHTML = mc.faces.length;
+	
+	var div_num_indices = document.getElementById('num_indices');
+	num_indices.innerHTML = mc.faces.length*3;
+	
+    draw();
 }

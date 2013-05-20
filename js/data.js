@@ -11,6 +11,7 @@ function Sphere() {
 
 function Volume(polygon) {
 	this.data = null;
+	this.name = "Sphere";
 	this.resolution = new Array(3);
 	this.polygon = polygon;
 }
@@ -23,8 +24,6 @@ Volume.prototype.create = function() {
 	for(var i = 0; i < 3; ++i) {
 		this.resolution[i] = 1+Math.ceil((dims[i][1]-dims[i][0])/dims[i][2]);
 	}
-	
-	console.log("resolution="+this.resolution[0]+"x"+this.resolution[1]+"x"+this.resolution[2]);
 	
 	this.data = new Float32Array(this.resolution[0] * this.resolution[1] * this.resolution[2]);
 	var n = 0;
